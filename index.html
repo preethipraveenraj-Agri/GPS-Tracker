@@ -444,46 +444,10 @@
         } catch (error) {
           console.warn('Fetch failed, using fallback data:', error.message);
           document.getElementById('statusMessage').textContent = '⚠️ Using demo data (sheet not reachable)';
-          // Fallback to hardcoded data if fetch fails
-          return getFallbackData();
+          // Return empty array if fetch fails
+          return [];
         }
       }
-
-      // --------------------------------------------------------------
-      // Fallback data (your original sample)
-      // --------------------------------------------------------------
-      function getFallbackData() {
-        return [
-          {
-            timestamp: "5/24/2026 16:42:54",
-            latitude: 12.97231,
-            longitude: 77.65237,
-            speedKmh: 0,
-            altitude: 884.5,
-            satellites: 5,
-            status: "STABLE"
-          },
-          {
-            timestamp: "5/24/2026 16:45:26",
-            latitude: 12.97236,
-            longitude: 77.65234,
-            speedKmh: 0,
-            altitude: 902.7,
-            satellites: 5,
-            status: "STABLE"
-          },
-          {
-            timestamp: "5/24/2026 16:47:58",
-            latitude: 12.97232,
-            longitude: 77.65233,
-            speedKmh: 0,
-            altitude: 905,
-            satellites: 5,
-            status: "STABLE"
-          }
-        ];
-      }
-
       // --------------------------------------------------------------
       // Update map with new points
       // --------------------------------------------------------------
