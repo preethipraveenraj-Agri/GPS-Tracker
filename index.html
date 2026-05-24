@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Tractor GPS Tracker • Live Auto-Refresh</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      background: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 15px;
+    }
+    .dashboard {
+      width: 100%;
+      max-width: 1200px;
+      background: #1e293b;
+      border-radius: 2rem;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #334155;
+    }
+    .header {
+      padding: 1.5rem 2rem;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 1px solid #334155;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.2rem;
+    }
+    .title-section h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      letter-spacing: -0.3px;
+    }
+    .live-badge {
+      background: #ef4444;
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 1rem;
+      border-radius: 30px;
+      letter-spacing: 0.5px;
+      animation: pulse 1.8s infinite;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(0.98); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .subtitle {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin-top: 0.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .stats {
+      display: flex;
+      gap: 1.8rem;
+      background: #0f172a;
+      padding: 0.8rem 2rem;
+      border-radius: 3rem;
+      backdrop-filter: blur(12px);
+      border: 1px solid #334155;
+    }
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .stat-value {
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: #e2e8f0;
+      line-height: 1.2;
+    }
+    .stat-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #64748b;
+    }
+    .refresh-control {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: #0f172a;
+      padding: 0.5rem 1.2rem;
+      border-radius: 2.5rem;
+      border: 1px solid #334155;
+    }
+    .refresh-btn {
+      background: #3b82f6;
+      border: none;
+      color: white;
+      padding: 0.4rem 1rem;
+      border-radius: 2rem;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: background 0.2s;
+    }
+    .refresh-btn:hover {
+      background: #2563eb;
+    }
+    .countdown {
+      color: #94a3b8;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    .map-container {
+      position: relative;
+      width: 100%;
+      height: 60vh;
+      min-height: 420px;
+      background: #0f172a;
+      border-top: 1px solid #334155;
+      border-bottom: 1px solid #334155;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #1e293b;
+    }
+    .info-panel {
+      background: #0f172a;
+      padding: 1rem 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      border-top: 1px solid #334155;
+    }
+    .legend {
+      display: flex;
+      gap: 1.8rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .legend-dot {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #f97316;
+      box-shadow: 0 0 12px #f97316cc;
+      margin-right: 0.4rem;
+    }
+    .data-source {
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .coords-table {
+      background: #0f172a;
+      padding: 0.8rem 2rem 1.5rem;
+      overflow-x: auto;
+      color: #cbd5e1;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    th {
+      text-align: left;
+      padding: 0.6rem 0.8rem;
+      color: #94a3b8;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #334155;
+      position: sticky;
+      top: 0;
+      background: #0f172a;
+    }
+    td {
+      padding: 0.5rem 0.8rem;
+      border-bottom: 1px solid #1e293b;
+    }
+    .stable-badge {
+      background: #10b98120;
+      color: #34d399;
+      padding: 0.2rem 0.8rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.7rem;
+      border: 1px solid #10b98140;
+    }
+    .error-message {
+      color: #f87171;
+      background: #7f1d1d20;
+      padding: 0.5rem 1rem;
+      border-radius: 0.8rem;
+      font-size: 0.8rem;
+    }
+    @media (max-width: 700px) {
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .stats {
+        width: 100%;
+        justify-content: space-around;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <div class="header">
+      <div class="title-section">
+        <h1>
+          🚜 Tractor Live GPS
+          <span class="live-badge">🔴 LIVE</span>
+        </h1>
+        <div class="subtitle">
+          <span>📍 Auto-fetch from Sheets</span>
+          <span>•</span>
+          <span id="lastUpdateLabel">Waiting for data...</span>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat-item">
+          <div class="stat-value" id="pointCount">0</div>
+          <div class="stat-label">points</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="avgSpeed">0</div>
+          <div class="stat-label">avg km/h</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="avgAlt">0m</div>
+          <div class="stat-label">avg alt</div>
+        </div>
+      </div>
+      <div class="refresh-control">
+        <span class="countdown" id="countdownTimer">Next: 30s</span>
+        <button class="refresh-btn" id="manualRefreshBtn">
+          <span>↻</span> Refresh now
+        </button>
+      </div>
+    </div>
+
+    <div class="map-container">
+      <div id="map"></div>
+    </div>
+
+    <div class="info-panel">
+      <div class="legend">
+        <div><span class="legend-dot"></span> Tractor positions (auto-update)</div>
+        <div style="color:#94a3b8;" id="statusMessage">⚡ Connecting to sheet...</div>
+      </div>
+      <div class="data-source">
+        <span>📊 Google Sheets CSV endpoint</span>
+        <span style="color:#3b82f6;">⚡ 30s interval</span>
+      </div>
+    </div>
+
+    <div class="coords-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Speed</th>
+            <th>Alt (m)</th>
+            <th>Sat.</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="7" style="text-align:center; color:#64748b;">Loading data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // --------------------------------------------------------------
+      // CONFIGURATION: Replace with your published Google Sheets CSV URL
+      // --------------------------------------------------------------
+      // Instructions:
+      // 1. Open your Google Sheet
+      // 2. File → Share → Publish to web
+      // 3. Choose "Comma-separated values (.csv)" and publish
+      // 4. Copy the generated URL and paste below
+      const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTJ7QkDGr_mWxLQPPAFJH4l_Vpm_KI4fc4H-wVLem8Zdud2boPDZIq8kmFZIGVIS6UOKUK6O9SMQEVH/pub?output=csv";
+      
+      // IMPORTANT: If you haven't published your sheet, the code will use fallback demo data.
+      // Replace the URL above with your actual published CSV link.
+      
+      const REFRESH_INTERVAL_SECONDS = 30; // auto-refresh every 30 seconds
+      
+      // --------------------------------------------------------------
+      // Global variables
+      // --------------------------------------------------------------
+      let map;
+      let markersLayer; // Layer group for markers
+      let polylineLayer; // Layer for polyline
+      let currentPoints = [];
+      let refreshTimer;
+      let countdownInterval;
+      let countdownValue = REFRESH_INTERVAL_SECONDS;
+      
+      // --------------------------------------------------------------
+      // Initialize Leaflet Map
+      // --------------------------------------------------------------
+      function initMap() {
+        map = L.map('map', {
+          center: [12.97233, 77.65235],
+          zoom: 17,
+          zoomControl: true,
+          scrollWheelZoom: true,
+          attributionControl: true
+        });
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+          subdomains: 'abcd',
+          maxZoom: 20,
+          minZoom: 3
+        }).addTo(map);
+
+        // Initialize empty layers
+        markersLayer = L.layerGroup().addTo(map);
+        polylineLayer = L.layerGroup().addTo(map);
+        
+        L.control.scale({ imperial: false, metric: true, position: 'bottomright' }).addTo(map);
+      }
+
+      // --------------------------------------------------------------
+      // Parse CSV text into array of objects
+      // --------------------------------------------------------------
+      function parseCSV(csvText) {
+        const lines = csvText.trim().split('\n');
+        if (lines.length < 2) return [];
+        
+        const headers = lines[0].split(',').map(h => h.trim());
+        const dataRows = lines.slice(1);
+        
+        return dataRows.map(row => {
+          const values = row.split(',').map(v => v.trim());
+          const obj = {};
+          headers.forEach((header, index) => {
+            obj[header] = values[index] || '';
+          });
+          return obj;
+        });
+      }
+
+      // --------------------------------------------------------------
+      // Convert raw row data to standardized point object
+      // --------------------------------------------------------------
+      function normalizePoint(row) {
+        // Try to find latitude/longitude columns (case-insensitive)
+        const latKey = Object.keys(row).find(k => k.toLowerCase().includes('lat'));
+        const lngKey = Object.keys(row).find(k => k.toLowerCase().includes('lng') || k.toLowerCase().includes('long'));
+        const timestampKey = Object.keys(row).find(k => k.toLowerCase().includes('timestamp') || k.toLowerCase().includes('time'));
+        const speedKey = Object.keys(row).find(k => k.toLowerCase().includes('speed'));
+        const altKey = Object.keys(row).find(k => k.toLowerCase().includes('alt'));
+        const satKey = Object.keys(row).find(k => k.toLowerCase().includes('sat'));
+        const statusKey = Object.keys(row).find(k => k.toLowerCase().includes('status'));
+        
+        const lat = latKey ? parseFloat(row[latKey]) : NaN;
+        const lng = lngKey ? parseFloat(row[lngKey]) : NaN;
+        
+        if (isNaN(lat) || isNaN(lng)) return null;
+        
+        return {
+          timestamp: timestampKey ? row[timestampKey] : '',
+          latitude: lat,
+          longitude: lng,
+          speedKmh: speedKey ? parseFloat(row[speedKey]) || 0 : 0,
+          altitude: altKey ? parseFloat(row[altKey]) || 0 : 0,
+          satellites: satKey ? parseInt(row[satKey]) || 0 : 0,
+          status: statusKey ? row[statusKey] : 'STABLE',
+          raw: row
+        };
+      }
+
+      // --------------------------------------------------------------
+      // Fetch data from Google Sheets CSV
+      // --------------------------------------------------------------
+      async function fetchGPSData() {
+        try {
+          document.getElementById('statusMessage').textContent = '🔄 Fetching data...';
+          const response = await fetch(SHEET_CSV_URL, { 
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          
+          const csvText = await response.text();
+          const rows = parseCSV(csvText);
+          const points = rows.map(normalizePoint).filter(p => p !== null);
+          
+          if (points.length === 0) {
+            throw new Error('No valid GPS coordinates found');
+          }
+          
+          return points;
+        } catch (error) {
+          console.warn('Fetch failed, using fallback data:', error.message);
+          document.getElementById('statusMessage').textContent = '⚠️ Using demo data (sheet not reachable)';
+          // Fallback to hardcoded data if fetch fails
+          return getFallbackData();
+        }
+      }
+
+      // --------------------------------------------------------------
+      // Fallback data (your original sample)
+      // --------------------------------------------------------------
+      function getFallbackData() {
+        return [
+          {
+            timestamp: "5/24/2026 16:42:54",
+            latitude: 12.97231,
+            longitude: 77.65237,
+            speedKmh: 0,
+            altitude: 884.5,
+            satellites: 5,
+            status: "STABLE"
+          },
+          {
+            timestamp: "5/24/2026 16:45:26",
+            latitude: 12.97236,
+            longitude: 77.65234,
+            speedKmh: 0,
+            altitude: 902.7,
+            satellites: 5,
+            status: "STABLE"
+          },
+          {
+            timestamp: "5/24/2026 16:47:58",
+            latitude: 12.97232,
+            longitude: 77.65233,
+            speedKmh: 0,
+            altitude: 905,
+            satellites: 5,
+            status: "STABLE"
+          }
+        ];
+      }
+
+      // --------------------------------------------------------------
+      // Update map with new points
+      // --------------------------------------------------------------
+      function updateMap(points) {
+        // Clear existing layers
+        markersLayer.clearLayers();
+        polylineLayer.clearLayers();
+        
+        if (points.length === 0) return;
+        
+        // Custom tractor icon
+        const tractorIcon = L.divIcon({
+          html: `<div style="
+            background: #f97316;
+            width: 28px;
+            height: 28px;
+            border-radius: 50% 50% 50% 10%;
+            transform: rotate(-15deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(249, 115, 22, 0.8);
+            border: 2px solid white;
+            font-size: 16px;
+            color: white;
+          ">🚜</div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+          popupAnchor: [0, -18]
+        });
+
+        const latlngs = [];
+        
+        points.forEach((p, index) => {
+          const marker = L.marker([p.latitude, p.longitude], { icon: tractorIcon })
+            .bindPopup(`
+              <div style="font-family: monospace; font-size: 0.85rem; line-height: 1.5;">
+                <strong>🚜 Point ${index + 1}</strong><br>
+                🕒 ${p.timestamp || 'N/A'}<br>
+                📍 ${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}<br>
+                ⬆️ ${p.altitude}m | 🛰️ ${p.satellites} sats<br>
+                ⚡ ${p.status || 'STABLE'}
+              </div>
+            `);
+          markersLayer.addLayer(marker);
+          latlngs.push([p.latitude, p.longitude]);
+        });
+
+        // Add polyline
+        if (latlngs.length >= 2) {
+          const polyline = L.polyline(latlngs, {
+            color: '#f97316',
+            weight: 3,
+            opacity: 0.75,
+            dashArray: '8, 6',
+            lineCap: 'round'
+          });
+          polylineLayer.addLayer(polyline);
+        }
+
+        // Fit bounds
+        if (latlngs.length > 0) {
+          const bounds = L.latLngBounds(latlngs);
+          if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+          }
+        }
+      }
+
+      // --------------------------------------------------------------
+      // Update UI statistics and table
+      // --------------------------------------------------------------
+      function updateUI(points) {
+        currentPoints = points;
+        
+        // Update stats
+        document.getElementById('pointCount').textContent = points.length;
+        
+        const avgSpeed = points.length > 0 
+          ? (points.reduce((sum, p) => sum + p.speedKmh, 0) / points.length).toFixed(1)
+          : '0';
+        document.getElementById('avgSpeed').textContent = avgSpeed;
+        
+        const avgAlt = points.length > 0
+          ? Math.round(points.reduce((sum, p) => sum + p.altitude, 0) / points.length)
+          : 0;
+        document.getElementById('avgAlt').textContent = avgAlt + 'm';
+        
+        // Update last update time
+        const now = new Date();
+        document.getElementById('lastUpdateLabel').textContent = 
+          `Last update: ${now.toLocaleTimeString()}`;
+        
+        document.getElementById('statusMessage').textContent = 
+          `✅ ${points.length} points loaded • Auto-refreshing`;
+        
+        // Update table
+        const tableBody = document.getElementById('tableBody');
+        if (points.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#f87171;">No GPS data</td></tr>';
+        } else {
+          tableBody.innerHTML = points.map(p => `
+            <tr>
+              <td>${p.timestamp || 'N/A'}</td>
+              <td>${p.latitude.toFixed(5)}</td>
+              <td>${p.longitude.toFixed(5)}</td>
+              <td>${p.speedKmh} km/h</td>
+              <td>${p.altitude} m</td>
+              <td>${p.satellites}</td>
+              <td><span class="stable-badge">${p.status || 'STABLE'}</span></td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      // --------------------------------------------------------------
+      // Main refresh function
+      // --------------------------------------------------------------
+      async function refreshData(isManual = false) {
+        if (isManual) {
+          document.getElementById('statusMessage').textContent = '🔄 Manual refresh...';
+        }
+        
+        const points = await fetchGPSData();
+        updateMap(points);
+        updateUI(points);
+        
+        // Reset countdown
+        countdownValue = REFRESH_INTERVAL_SECONDS;
+        updateCountdownDisplay();
+      }
+
+      // --------------------------------------------------------------
+      // Countdown timer logic
+      // --------------------------------------------------------------
+      function updateCountdownDisplay() {
+        document.getElementById('countdownTimer').textContent = `Next: ${countdownValue}s`;
+      }
+
+      function startCountdown() {
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownValue = REFRESH_INTERVAL_SECONDS;
+        updateCountdownDisplay();
+        
+        countdownInterval = setInterval(() => {
+          countdownValue--;
+          updateCountdownDisplay();
+          
+          if (countdownValue <= 0) {
+            countdownValue = REFRESH_INTERVAL_SECONDS;
+            refreshData(false);
+          }
+        }, 1000);
+      }
+
+      // --------------------------------------------------------------
+      // Setup auto-refresh interval
+      // --------------------------------------------------------------
+      function setupAutoRefresh() {
+        if (refreshTimer) clearInterval(refreshTimer);
+        if (countdownInterval) clearInterval(countdownInterval);
+        
+        // Initial load
+        refreshData(false);
+        
+        // Set interval for auto-refresh (every REFRESH_INTERVAL_SECONDS)
+        refreshTimer = setInterval(() => {
+          refreshData(false);
+        }, REFRESH_INTERVAL_SECONDS * 1000);
+        
+        // Start visual countdown
+        startCountdown();
+      }
+
+      // --------------------------------------------------------------
+      // Event listeners
+      // --------------------------------------------------------------
+      document.getElementById('manualRefreshBtn').addEventListener('click', () => {
+        refreshData(true);
+        // Reset intervals
+        if (refreshTimer) clearInterval(refreshTimer);
+        if (countdownInterval) clearInterval(countdownInterval);
+        setupAutoRefresh();
+      });
+
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        if (map) map.invalidateSize();
+      });
+
+      // --------------------------------------------------------------
+      // Initialize everything
+      // --------------------------------------------------------------
+      function init() {
+        initMap();
+        setupAutoRefresh();
+        
+        // Show initial message about sheet configuration
+        console.log('🚜 Tractor GPS Tracker initialized');
+        console.log('📊 Fetching from:', SHEET_CSV_URL);
+        console.log('ℹ️ If sheet is not published, fallback demo data will be used');
+      }
+
+      // Start the application
+      init();
+    })();
+  </script>
+</body>
+</html>
