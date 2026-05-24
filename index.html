@@ -230,6 +230,15 @@
       border-radius: 0.8rem;
       font-size: 0.8rem;
     }
+    .zoom-indicator {
+      background: #1e293b;
+      color: #f97316;
+      padding: 0.3rem 1rem;
+      border-radius: 2rem;
+      font-weight: 600;
+      font-size: 0.8rem;
+      border: 1px solid #f9731640;
+    }
     @media (max-width: 700px) {
       .header {
         flex-direction: column;
@@ -252,6 +261,8 @@
         </h1>
         <div class="subtitle">
           <span>📍 Auto-fetch from Sheets</span>
+          <span>•</span>
+          <span class="zoom-indicator">🔍 Zoom Level 15 (~500m)</span>
           <span>•</span>
           <span id="lastUpdateLabel">Waiting for data...</span>
         </div>
@@ -318,36 +329,29 @@
       // --------------------------------------------------------------
       // CONFIGURATION: Replace with your published Google Sheets CSV URL
       // --------------------------------------------------------------
-      // Instructions:
-      // 1. Open your Google Sheet
-      // 2. File → Share → Publish to web
-      // 3. Choose "Comma-separated values (.csv)" and publish
-      // 4. Copy the generated URL and paste below
-      const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTJ7QkDGr_mWxLQPPAFJH4l_Vpm_KI4fc4H-wVLem8Zdud2boPDZIq8kmFZIGVIS6UOKUK6O9SMQEVH/pub?output=csv";
-      
-      // IMPORTANT: If you haven't published your sheet, the code will use fallback demo data.
-      // Replace the URL above with your actual published CSV link.
+      const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNmJ2hNkWZgMNsGvWrdjHMnX9pbYqB0aLl5dXbJGzL7qUwFkN3hVjLkTi5RmZsBq0W7aLxCdNq/pub?gid=0&single=true&output=csv";
       
       const REFRESH_INTERVAL_SECONDS = 30; // auto-refresh every 30 seconds
+      const DEFAULT_ZOOM = 15; // Zoom level 15 shows ~500m area
       
       // --------------------------------------------------------------
       // Global variables
       // --------------------------------------------------------------
       let map;
-      let markersLayer; // Layer group for markers
-      let polylineLayer; // Layer for polyline
+      let markersLayer;
+      let polylineLayer;
       let currentPoints = [];
       let refreshTimer;
       let countdownInterval;
       let countdownValue = REFRESH_INTERVAL_SECONDS;
       
       // --------------------------------------------------------------
-      // Initialize Leaflet Map
+      // Initialize Leaflet Map with Zoom 15
       // --------------------------------------------------------------
       function initMap() {
         map = L.map('map', {
           center: [12.97233, 77.65235],
-          zoom: 17,
+          zoom: DEFAULT_ZOOM,
           zoomControl: true,
           scrollWheelZoom: true,
           attributionControl: true
@@ -357,7 +361,7 @@
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
           subdomains: 'abcd',
           maxZoom: 20,
-          minZoom: 3
+          minZoom: 5
         }).addTo(map);
 
         // Initialize empty layers
@@ -365,6 +369,34 @@
         polylineLayer = L.layerGroup().addTo(map);
         
         L.control.scale({ imperial: false, metric: true, position: 'bottomright' }).addTo(map);
+        
+        // Add zoom level indicator
+        map.on('zoomend', function() {
+          updateZoomIndicator();
+        });
+      }
+
+      function updateZoomIndicator() {
+        const currentZoom = map.getZoom();
+        const zoomIndicator = document.querySelector('.zoom-indicator');
+        if (zoomIndicator) {
+          const scaleText = getScaleText(currentZoom);
+          zoomIndicator.textContent = `🔍 Zoom ${currentZoom} (${scaleText})`;
+        }
+      }
+
+      function getScaleText(zoom) {
+        const scales = {
+          13: '~2km',
+          14: '~1km',
+          15: '~500m',
+          16: '~250m',
+          17: '~100m',
+          18: '~50m',
+          19: '~25m',
+          20: '~10m'
+        };
+        return scales[zoom] || '~1km';
       }
 
       // --------------------------------------------------------------
@@ -391,7 +423,6 @@
       // Convert raw row data to standardized point object
       // --------------------------------------------------------------
       function normalizePoint(row) {
-        // Try to find latitude/longitude columns (case-insensitive)
         const latKey = Object.keys(row).find(k => k.toLowerCase().includes('lat'));
         const lngKey = Object.keys(row).find(k => k.toLowerCase().includes('lng') || k.toLowerCase().includes('long'));
         const timestampKey = Object.keys(row).find(k => k.toLowerCase().includes('timestamp') || k.toLowerCase().includes('time'));
@@ -442,14 +473,14 @@
           
           return points;
         } catch (error) {
-          console.warn('Fetch failed, using fallback data:', error.message);
-          document.getElementById('statusMessage').textContent = '⚠️ Using demo data (sheet not reachable)';
-          // Return empty array if fetch fails
+          console.warn('Fetch failed:', error.message);
+          document.getElementById('statusMessage').textContent = '⚠️ Sheet not reachable';
           return [];
         }
       }
+
       // --------------------------------------------------------------
-      // Update map with new points
+      // Update map with new points (maintaining zoom 15)
       // --------------------------------------------------------------
       function updateMap(points) {
         // Clear existing layers
@@ -508,13 +539,13 @@
           polylineLayer.addLayer(polyline);
         }
 
-        // Fit bounds
+        // Always center on latest point at zoom 15
         if (latlngs.length > 0) {
-          const bounds = L.latLngBounds(latlngs);
-          if (bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
-          }
+          const latestPoint = latlngs[latlngs.length - 1];
+          map.setView(latestPoint, DEFAULT_ZOOM, { animate: true });
         }
+        
+        updateZoomIndicator();
       }
 
       // --------------------------------------------------------------
@@ -542,7 +573,7 @@
           `Last update: ${now.toLocaleTimeString()}`;
         
         document.getElementById('statusMessage').textContent = 
-          `✅ ${points.length} points loaded • Auto-refreshing`;
+          `✅ ${points.length} points loaded • Zoom 15 (~500m)`;
         
         // Update table
         const tableBody = document.getElementById('tableBody');
@@ -613,7 +644,7 @@
         // Initial load
         refreshData(false);
         
-        // Set interval for auto-refresh (every REFRESH_INTERVAL_SECONDS)
+        // Set interval for auto-refresh
         refreshTimer = setInterval(() => {
           refreshData(false);
         }, REFRESH_INTERVAL_SECONDS * 1000);
@@ -645,10 +676,8 @@
         initMap();
         setupAutoRefresh();
         
-        // Show initial message about sheet configuration
-        console.log('🚜 Tractor GPS Tracker initialized');
+        console.log('🚜 Tractor GPS Tracker initialized at Zoom 15');
         console.log('📊 Fetching from:', SHEET_CSV_URL);
-        console.log('ℹ️ If sheet is not published, fallback demo data will be used');
       }
 
       // Start the application
