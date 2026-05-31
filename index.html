@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Tractor GPS Tracker • Smart Refresh</title>
+  <title>Tractor GPS Tracker • Live Line Detection</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
@@ -20,7 +20,7 @@
       margin: 0 auto;
       background: #1e293b;
       border-radius: 2rem;
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.7);
       overflow: hidden;
       border: 1px solid #334155;
     }
@@ -34,239 +34,129 @@
       justify-content: space-between;
       gap: 1rem;
     }
-    .title-section h1 {
-      font-size: 1.9rem;
-      font-weight: 700;
-      color: #f1f5f9;
-    }
-    .live-indicator {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: #10b98120;
-      padding: 0.4rem 1rem;
-      border-radius: 20px;
-      color: #10b981;
-      font-size: 0.8rem;
-      font-weight: 600;
+    .title-section h1 { font-size: 1.9rem; font-weight: 700; color: #f1f5f9; }
+    .live-badge {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: #10b98120; padding: 0.4rem 1rem; border-radius: 20px;
+      color: #10b981; font-size: 0.8rem; font-weight: 600;
     }
     .live-dot {
-      width: 10px;
-      height: 10px;
-      background: #10b981;
-      border-radius: 50%;
-      animation: blink 1s infinite;
+      width: 10px; height: 10px; background: #10b981;
+      border-radius: 50%; animation: blink 1s infinite;
     }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
     
     .stats-row {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      padding: 1rem 2rem;
-      background: #0f172a;
-      border-bottom: 1px solid #334155;
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      padding: 1rem 2rem; background: #0f172a; border-bottom: 1px solid #334155;
     }
     .stat-card {
-      background: #1e293b;
-      padding: 1rem 1.5rem;
-      border-radius: 1rem;
-      border: 1px solid #334155;
-      flex: 1;
-      min-width: 130px;
-      text-align: center;
+      background: #1e293b; padding: 1rem 1.5rem; border-radius: 1rem;
+      border: 1px solid #334155; flex: 1; min-width: 120px; text-align: center;
     }
-    .stat-label {
-      color: #64748b;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-    }
-    .stat-value {
-      color: #f1f5f9;
-      font-size: 1.5rem;
-      font-weight: 700;
-    }
+    .stat-label { color: #64748b; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { color: #f1f5f9; font-size: 1.4rem; font-weight: 700; }
     
-    .map-container {
-      width: 100%;
-      height: 45vh;
-      min-height: 350px;
-    }
+    .map-container { width: 100%; height: 45vh; min-height: 350px; }
     #map { width: 100%; height: 100%; }
     
     .status-bar {
-      background: #0f172a;
-      padding: 0.8rem 2rem;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      color: #94a3b8;
-      font-size: 0.8rem;
-      border-top: 1px solid #334155;
-      gap: 1rem;
+      background: #0f172a; padding: 0.8rem 2rem; display: flex; flex-wrap: wrap;
+      align-items: center; justify-content: space-between; color: #94a3b8;
+      font-size: 0.8rem; border-top: 1px solid #334155; gap: 1rem;
     }
     
-    .logs-section {
-      background: #0f172a;
-      border-top: 1px solid #334155;
-    }
+    .logs-section { background: #0f172a; border-top: 1px solid #334155; }
     .tab-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.8rem 2rem;
-      background: #1e293b;
-      cursor: pointer;
-      border-bottom: 1px solid #334155;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.8rem 2rem; background: #1e293b; cursor: pointer; border-bottom: 1px solid #334155;
     }
     .tab-header:hover { background: #273144; }
-    .tab-title {
-      color: #f1f5f9;
-      font-weight: 600;
-    }
-    .tab-badge {
-      background: #3b82f6;
-      color: white;
-      padding: 0.2rem 0.8rem;
-      border-radius: 20px;
-      font-size: 0.75rem;
-    }
-    .tab-arrow {
-      color: #94a3b8;
-      transition: transform 0.3s;
-    }
+    .tab-title { color: #f1f5f9; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .tab-badge { background: #3b82f6; color: white; padding: 0.2rem 0.8rem; border-radius: 20px; font-size: 0.75rem; }
+    .tab-arrow { color: #94a3b8; font-size: 1.2rem; transition: transform 0.3s; }
     .tab-arrow.open { transform: rotate(180deg); }
-    .logs-content {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s;
-    }
-    .logs-content.open {
-      max-height: 500px;
-      overflow-y: auto;
-    }
+    .logs-content { max-height: 0; overflow: hidden; transition: max-height 0.3s; }
+    .logs-content.open { max-height: 500px; overflow-y: auto; }
     
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.75rem;
-      white-space: nowrap;
-    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.75rem; white-space: nowrap; }
     th {
-      text-align: left;
-      padding: 0.6rem 0.8rem;
-      color: #94a3b8;
-      font-weight: 600;
-      text-transform: uppercase;
-      font-size: 0.65rem;
-      border-bottom: 1px solid #334155;
-      position: sticky;
-      top: 0;
-      background: #0f172a;
+      text-align: left; padding: 0.6rem 0.8rem; color: #94a3b8; font-weight: 600;
+      text-transform: uppercase; font-size: 0.65rem; border-bottom: 1px solid #334155;
+      position: sticky; top: 0; background: #0f172a; z-index: 1;
     }
-    td {
-      padding: 0.45rem 0.8rem;
-      border-bottom: 1px solid #1e293b;
-      color: #cbd5e1;
-    }
-    tr.new-row {
-      animation: highlight 3s ease-out;
-    }
-    @keyframes highlight {
-      0% { background: #f9731630; }
-      100% { background: transparent; }
-    }
+    td { padding: 0.45rem 0.8rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+    tr:hover td { background: #1e293b; }
+    tr.new-row { animation: highlight 3s ease-out; }
+    @keyframes highlight { 0% { background: #f9731640; } 100% { background: transparent; } }
     
-    .badge-on {
-      background: #10b98130;
-      color: #34d399;
-      padding: 0.15rem 0.6rem;
-      border-radius: 15px;
-      font-weight: 600;
-      font-size: 0.65rem;
-    }
-    .badge-off {
-      background: #f59e0b30;
-      color: #fbbf24;
-      padding: 0.15rem 0.6rem;
-      border-radius: 15px;
-      font-weight: 600;
-      font-size: 0.65rem;
-    }
+    .badge-on { background: #10b98130; color: #34d399; padding: 0.15rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.65rem; }
+    .badge-off { background: #f59e0b30; color: #fbbf24; padding: 0.15rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.65rem; }
     
     .refresh-btn {
-      background: #3b82f6;
-      border: none;
-      color: white;
-      padding: 0.5rem 1.2rem;
-      border-radius: 2rem;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 0.85rem;
+      background: #3b82f6; border: none; color: white; padding: 0.5rem 1.2rem;
+      border-radius: 2rem; font-weight: 600; cursor: pointer; font-size: 0.85rem;
     }
     .refresh-btn:hover { background: #2563eb; }
 
     @media (max-width: 768px) {
       .stats-row { flex-direction: column; }
+      .header { flex-direction: column; text-align: center; }
     }
   </style>
 </head>
 <body>
   <div class="dashboard">
+    <!-- Header -->
     <div class="header">
       <div class="title-section">
         <h1>🚜 Tractor GPS Tracker</h1>
-        <div style="color:#94a3b8;font-size:0.85rem;">📍 Smart Refresh • Map updates only on new data</div>
+        <div style="color:#94a3b8;font-size:0.85rem;">📍 Instant new line detection • Preserves sheet format</div>
       </div>
       <div style="display:flex;align-items:center;gap:1rem;">
-        <div class="live-indicator">
-          <span class="live-dot"></span>
-          <span id="connectionStatus">Connected</span>
-        </div>
+        <div class="live-badge"><span class="live-dot"></span><span id="connStatus">Connected</span></div>
         <button class="refresh-btn" onclick="fullRefresh()">↻ Full Refresh</button>
       </div>
     </div>
 
+    <!-- Stats -->
     <div class="stats-row">
       <div class="stat-card">
         <div class="stat-label">🔑 Status</div>
-        <div class="stat-value" id="ignitionStatus" style="font-size:1.2rem;">--</div>
+        <div class="stat-value" id="ignStatus" style="font-size:1.2rem;">--</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">⏱️ Trip Duration</div>
-        <div class="stat-value" id="tripDuration" style="font-size:1.4rem;color:#f97316;">--</div>
+        <div class="stat-value" id="tripDur" style="font-size:1.4rem;color:#f97316;">--</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">📊 Total Rows</div>
         <div class="stat-value" id="totalLogs">0</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">🆕 New This Session</div>
-        <div class="stat-value" id="newRowsCount" style="color:#f97316;">0</div>
+        <div class="stat-label">🆕 New Lines</div>
+        <div class="stat-value" id="newCount" style="color:#f97316;">0</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">⚡ Motion</div>
-        <div class="stat-value" id="currentMotion" style="font-size:1.1rem;">--</div>
+        <div class="stat-value" id="motion" style="font-size:1.1rem;">--</div>
       </div>
     </div>
 
-    <div class="map-container">
-      <div id="map"></div>
-    </div>
+    <!-- Map -->
+    <div class="map-container"><div id="map"></div></div>
 
+    <!-- Status Bar -->
     <div class="status-bar">
       <span id="updateInfo">Initializing...</span>
-      <span>🔍 Polling every 3s (map updates on new data only)</span>
-      <span id="apiCalls">API calls: 0</span>
+      <span>🔍 Polling every 3s | Map updates only on new line</span>
+      <span id="pollCount">Polls: 0</span>
     </div>
 
+    <!-- Logs Tab -->
     <div class="logs-section">
       <div class="tab-header" onclick="toggleLogs()">
-        <div class="tab-title">📋 All Logs <span class="tab-badge" id="logCount">0</span></div>
+        <div class="tab-title">📋 All Logs <span class="tab-badge" id="logBadge">0</span></div>
         <span class="tab-arrow" id="tabArrow">▼</span>
       </div>
       <div class="logs-content" id="logsContent">
@@ -275,8 +165,8 @@
             <tr>
               <th>#</th>
               <th>Timestamp</th>
-              <th>Lat</th>
-              <th>Lng</th>
+              <th>Latitude</th>
+              <th>Longitude</th>
               <th>Speed</th>
               <th>Sat</th>
               <th>Motion</th>
@@ -288,7 +178,7 @@
             </tr>
           </thead>
           <tbody id="tableBody">
-            <tr><td colspan="12" style="text-align:center;">Loading...</td></tr>
+            <tr><td colspan="12" style="text-align:center;color:#64748b;">Loading data...</td></tr>
           </tbody>
         </table>
       </div>
@@ -297,36 +187,31 @@
 
   <script>
     // ═══════════════════════════════════════════
-    // CONFIGURATION
+    // 🔴 REPLACE WITH YOUR APPS SCRIPT WEB APP URL
     // ═══════════════════════════════════════════
-    // REPLACE with your Apps Script Web App URL
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGZy4LF__62tW-BU4iz5zWLGn-DNux1-BWNQZ8_B7mmNml0WZGaiASIs8FNgvDCxND/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzGZy4LF__62tW-BU4iz5zWLGn-DNux1-BWNQZ8_B7mmNml0WZGaiASIs8FNgvDCxND/exec";
     
-    const POLL_INTERVAL = 3000;
-    const DEFAULT_ZOOM = 16; // Fixed zoom level
+    const POLL_INTERVAL = 3000; // 3 seconds
+    const DEFAULT_ZOOM = 16;
 
     // ═══════════════════════════════════════════
     // GLOBAL VARIABLES
     // ═══════════════════════════════════════════
-    let map;
-    let markersLayer;
-    let polylineLayer;
+    let map, markersLayer, polylineLayer;
     let allData = [];
     let logsOpen = false;
     let lastRowNumber = 0;
     let totalNewRows = 0;
-    let apiCallCount = 0;
+    let pollCount = 0;
+    let userInteracted = false;
     let isFirstLoad = true;
-    let currentZoom = DEFAULT_ZOOM;
-    let currentCenter = [12.9725, 77.6524];
-    let userInteractedWithMap = false;
 
     // ═══════════════════════════════════════════
     // INIT MAP
     // ═══════════════════════════════════════════
     function initMap() {
       map = L.map('map', {
-        center: currentCenter,
+        center: [12.9725, 77.6524],
         zoom: DEFAULT_ZOOM,
         zoomControl: true,
         scrollWheelZoom: true
@@ -341,16 +226,9 @@
       polylineLayer = L.layerGroup().addTo(map);
       L.control.scale({ imperial: false, metric: true, position: 'bottomright' }).addTo(map);
 
-      // Track user interactions with map
-      map.on('zoomend', () => {
-        currentZoom = map.getZoom();
-        userInteractedWithMap = true;
-      });
-      
-      map.on('moveend', () => {
-        currentCenter = [map.getCenter().lat, map.getCenter().lng];
-        userInteractedWithMap = true;
-      });
+      // Track user map interactions
+      map.on('zoomend', () => { userInteracted = true; });
+      map.on('moveend', () => { userInteracted = true; });
     }
 
     function toggleLogs() {
@@ -360,59 +238,29 @@
     }
 
     // ═══════════════════════════════════════════
-    // FORMAT TIMESTAMP (Fix ISO format)
+    // FETCH DATA FROM APPS SCRIPT
     // ═══════════════════════════════════════════
-    function formatTimestamp(ts) {
-      if (!ts) return '';
-      
+    async function fetchData() {
       try {
-        // Handle ISO format: "2026-05-31T10:53:35.000Z"
-        if (ts.includes('T') && ts.includes('Z')) {
-          const date = new Date(ts);
-          if (!isNaN(date.getTime())) {
-            // Convert to IST (UTC+5:30)
-            const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
-            const month = (istDate.getMonth() + 1).toString();
-            const day = istDate.getDate().toString();
-            const year = istDate.getFullYear();
-            const hours = istDate.getHours().toString().padStart(2, '0');
-            const minutes = istDate.getMinutes().toString().padStart(2, '0');
-            const seconds = istDate.getSeconds().toString().padStart(2, '0');
-            return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
-          }
-        }
+        pollCount++;
+        document.getElementById('pollCount').textContent = `Polls: ${pollCount}`;
         
-        // Handle format: "5/31/2026 15:43:29"
-        if (ts.includes('/')) {
-          return ts; // Already in correct format
-        }
+        let url = API_URL;
         
-        return ts;
-      } catch (e) {
-        return ts;
-      }
-    }
-
-    // ═══════════════════════════════════════════
-    // FETCH FROM APPS SCRIPT
-    // ═══════════════════════════════════════════
-    async function fetchNewRows() {
-      try {
-        apiCallCount++;
-        document.getElementById('apiCalls').textContent = `API calls: ${apiCallCount}`;
-        
-        let url = APPS_SCRIPT_URL;
-        
-        // Only fetch new rows if we have existing data
+        // Only fetch new rows after first load
         if (!isFirstLoad && lastRowNumber > 0) {
           url += `?lastRow=${lastRowNumber}`;
         }
+        
+        // Add cache buster
+        url += (url.includes('?') ? '&' : '?') + `_=${Date.now()}`;
         
         const response = await fetch(url, { cache: 'no-store' });
         const result = await response.json();
         
         if (result.status === 'error') {
           console.error('API Error:', result.message);
+          document.getElementById('connStatus').textContent = 'Error';
           return;
         }
         
@@ -421,93 +269,99 @@
           return;
         }
         
-        let newDataAdded = false;
+        let mapNeedsUpdate = false;
         
         if (isFirstLoad) {
           // First load - get all data
-          allData = result.data.map(row => normalizeRow(row));
-          lastRowNumber = result.totalRows + 1;
+          allData = result.data.map(row => normalizeRow(row, false));
+          lastRowNumber = result.lastRow;
           isFirstLoad = false;
-          newDataAdded = true; // First load needs to draw map
+          mapNeedsUpdate = true;
           console.log('✅ Initial load:', allData.length, 'rows');
         } else if (result.newRows > 0) {
-          // New rows detected - only add new ones
-          const newRows = result.data.map(row => {
-            const normalized = normalizeRow(row);
-            normalized.isNew = true;
-            return normalized;
-          });
+          // New rows detected!
+          const newRows = result.data.map(row => normalizeRow(row, true));
           allData = [...allData, ...newRows];
           totalNewRows += newRows.length;
-          lastRowNumber = result.totalRows + 1;
-          newDataAdded = true;
+          lastRowNumber = result.lastRow;
+          mapNeedsUpdate = true;
           console.log(`🆕 ${newRows.length} new row(s) added!`);
           
-          // Flash notification
-          const newCountEl = document.getElementById('newRowsCount');
-          newCountEl.style.transform = 'scale(1.3)';
+          // Animate new rows counter
+          const el = document.getElementById('newCount');
+          el.style.transform = 'scale(1.4)';
+          el.style.color = '#f97316';
           setTimeout(() => {
-            newCountEl.style.transform = 'scale(1)';
+            el.style.transform = 'scale(1)';
           }, 300);
         }
         
-        // Update UI always (stats change even without new rows)
+        // Always update UI stats
         updateUI();
         
-        // Only update map if new data was added
-        if (newDataAdded) {
-          updateMap(false); // false = don't change zoom/center
+        // Only update map if new data arrived
+        if (mapNeedsUpdate) {
+          updateMap();
         }
         
-        document.getElementById('connectionStatus').textContent = 'Connected';
-        document.getElementById('connectionStatus').parentElement.style.background = '#10b98120';
+        document.getElementById('connStatus').textContent = 'Connected';
+        document.getElementById('connStatus').parentElement.style.background = '#10b98120';
         
       } catch (error) {
         console.error('Fetch error:', error);
-        document.getElementById('connectionStatus').textContent = 'Error';
-        document.getElementById('connectionStatus').parentElement.style.background = '#ef444420';
+        document.getElementById('connStatus').textContent = 'Disconnected';
+        document.getElementById('connStatus').parentElement.style.background = '#ef444420';
       }
     }
 
-    function normalizeRow(row) {
-      const lat = parseFloat(row['Latitude'] || row['latitude'] || 0);
-      const lng = parseFloat(row['Longitude'] || row['longitude'] || 0);
-      
+    // ═══════════════════════════════════════════
+    // NORMALIZE ROW (Preserves display format)
+    // ═══════════════════════════════════════════
+    function normalizeRow(row, isNew) {
       return {
-        rowNumber: row._rowNumber,
-        timestamp: formatTimestamp(row['Timestamp'] || row['timestamp'] || ''),
-        latitude: lat,
-        longitude: lng,
-        speed: parseFloat(row['Speed'] || row['speed'] || 0),
-        satellites: parseInt(row['Satellites'] || row['satellites'] || 0),
-        motion: (row['Motion Status'] || row['motion_status'] || '').toUpperCase(),
-        status: (row['Status'] || row['status'] || '').toUpperCase(),
-        startTime: row['Start Time'] || row['start_time'] || '',
-        endTime: row['End Time'] || row['end_time'] || '',
-        tripDuration: row['Trip Duration'] || row['trip_duration'] || '',
-        distance: row['Distance Travelled'] || row['distance_travelled'] || '',
-        isNew: false
+        rowNumber: row._rowNumber || '',
+        timestamp: getValue(row, ['Timestamp', 'timestamp']),
+        latitude: parseFloat(getValue(row, ['Latitude', 'latitude'])) || 0,
+        longitude: parseFloat(getValue(row, ['Longitude', 'longitude'])) || 0,
+        speed: getValue(row, ['Speed', 'speed']) || '0',
+        satellites: getValue(row, ['Satellites', 'satellites']) || '0',
+        motion: getValue(row, ['Motion Status', 'motion_status']),
+        status: getValue(row, ['Status', 'status']),
+        startTime: getValue(row, ['Start Time', 'start_time']),
+        endTime: getValue(row, ['End Time', 'end_time']),
+        tripDuration: getValue(row, ['Trip Duration', 'trip_duration']),
+        distance: getValue(row, ['Distance Travelled', 'distance_travelled']),
+        isNew: isNew
       };
     }
 
+    function getValue(obj, keys) {
+      for (let key of keys) {
+        if (obj[key] !== undefined && obj[key] !== '') {
+          return obj[key];
+        }
+      }
+      return '';
+    }
+
     // ═══════════════════════════════════════════
-    // UPDATE UI (Stats & Table only)
+    // UPDATE UI
     // ═══════════════════════════════════════════
     function updateUI() {
       const latest = allData.length > 0 ? allData[allData.length - 1] : null;
       
       document.getElementById('totalLogs').textContent = allData.length;
-      document.getElementById('logCount').textContent = allData.length;
-      document.getElementById('newRowsCount').textContent = totalNewRows;
+      document.getElementById('logBadge').textContent = allData.length;
+      document.getElementById('newCount').textContent = totalNewRows;
       
       if (latest) {
-        document.getElementById('ignitionStatus').textContent = latest.status || '--';
-        document.getElementById('tripDuration').textContent = latest.tripDuration || '--';
-        document.getElementById('currentMotion').textContent = latest.motion || '--';
+        document.getElementById('ignStatus').textContent = latest.status || '--';
+        document.getElementById('tripDur').textContent = latest.tripDuration || '--';
+        document.getElementById('motion').textContent = latest.motion || '--';
       }
       
       document.getElementById('updateInfo').textContent = 
-        `Last check: ${new Date().toLocaleTimeString()} | Total: ${allData.length} rows | Map updates: on new data only`;
+        `Last check: ${new Date().toLocaleTimeString()} | ${allData.length} rows | Map: on new data`;
       
       updateTable();
     }
@@ -515,23 +369,28 @@
     function updateTable() {
       const tbody = document.getElementById('tableBody');
       if (allData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;">No data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#f87171;">No data available</td></tr>';
         return;
       }
       
       const displayData = [...allData].reverse();
       
       tbody.innerHTML = displayData.map(d => {
+        const statusUpper = (d.status || '').toUpperCase();
+        const statusBadge = statusUpper === 'ON' 
+          ? '<span class="badge-on">ON</span>' 
+          : '<span class="badge-off">OFF</span>';
+        
         return `
           <tr class="${d.isNew ? 'new-row' : ''}">
-            <td>${d.rowNumber || ''}${d.isNew ? ' 🆕' : ''}</td>
+            <td style="color:#64748b;">${d.rowNumber}${d.isNew ? ' 🆕' : ''}</td>
             <td>${d.timestamp || '--'}</td>
             <td>${d.latitude ? d.latitude.toFixed(5) : '--'}</td>
             <td>${d.longitude ? d.longitude.toFixed(5) : '--'}</td>
             <td>${d.speed} km/h</td>
             <td>${d.satellites}</td>
             <td>${d.motion || '--'}</td>
-            <td><span class="${d.status === 'ON' ? 'badge-on' : 'badge-off'}">${d.status || '--'}</span></td>
+            <td>${statusBadge}</td>
             <td>${d.startTime || '--'}</td>
             <td>${d.endTime || '--'}</td>
             <td style="color:#f97316;font-weight:600;">${d.tripDuration || '--'}</td>
@@ -542,45 +401,45 @@
     }
 
     // ═══════════════════════════════════════════
-    // UPDATE MAP (Only when new data arrives)
+    // UPDATE MAP (Only when new data)
     // ═══════════════════════════════════════════
-    function updateMap(resetView = false) {
+    function updateMap() {
       markersLayer.clearLayers();
       polylineLayer.clearLayers();
       
       const gpsData = allData.filter(d => d.latitude && d.longitude && !isNaN(d.latitude) && !isNaN(d.longitude));
-      
       if (gpsData.length === 0) return;
       
       const onIcon = L.divIcon({
         html: '<div style="background:#10b981;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 0 8px #10b981;"></div>',
-        iconSize: [14, 14], 
-        iconAnchor: [7, 7]
+        iconSize: [14, 14], iconAnchor: [7, 7]
       });
       
       const offIcon = L.divIcon({
         html: '<div style="background:#f59e0b;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 0 8px #f59e0b;"></div>',
-        iconSize: [14, 14], 
-        iconAnchor: [7, 7]
+        iconSize: [14, 14], iconAnchor: [7, 7]
       });
 
       const newIcon = L.divIcon({
         html: '<div style="background:#f97316;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 0 14px #f97316;animation:pulse 1s infinite;"></div>',
-        iconSize: [18, 18], 
-        iconAnchor: [9, 9]
+        iconSize: [18, 18], iconAnchor: [9, 9]
       });
 
       const latlngs = [];
       
       gpsData.forEach(p => {
-        const icon = p.isNew ? newIcon : (p.status === 'ON' ? onIcon : offIcon);
+        const isOn = (p.status || '').toUpperCase() === 'ON';
+        const icon = p.isNew ? newIcon : (isOn ? onIcon : offIcon);
+        
         L.marker([p.latitude, p.longitude], { icon })
           .bindPopup(`
-            <b>${p.timestamp}</b><br>
-            Status: ${p.status || '--'}<br>
-            Motion: ${p.motion || '--'}<br>
-            Speed: ${p.speed} km/h<br>
-            Trip: ${p.tripDuration || 'N/A'}
+            <b>Row ${p.rowNumber}</b><br>
+            🕒 ${p.timestamp}<br>
+            🔑 Status: ${p.status || '--'}<br>
+            ⚡ Motion: ${p.motion || '--'}<br>
+            🚜 Speed: ${p.speed} km/h<br>
+            ⏱️ Trip: ${p.tripDuration || 'N/A'}<br>
+            🛣️ Distance: ${p.distance || '0 KM'}
             ${p.isNew ? '<br>🆕 <b>NEW!</b>' : ''}
           `)
           .addTo(markersLayer);
@@ -589,21 +448,14 @@
 
       if (latlngs.length >= 2) {
         L.polyline(latlngs, { 
-          color: '#3b82f6', 
-          weight: 2, 
-          opacity: 0.5, 
-          dashArray: '6,4' 
+          color: '#3b82f6', weight: 2, opacity: 0.5, dashArray: '6,4' 
         }).addTo(polylineLayer);
       }
 
-      // Only reset view if it's first load or user hasn't interacted with map
-      if (resetView || !userInteractedWithMap) {
-        if (latlngs.length > 0) {
-          map.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50], maxZoom: DEFAULT_ZOOM });
-        }
+      // Only auto-fit if user hasn't interacted
+      if (!userInteracted && latlngs.length > 0) {
+        map.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50], maxZoom: DEFAULT_ZOOM });
       }
-      // If user has interacted, keep their current zoom and center
-      // New markers/polyline will still appear at current view
     }
 
     // ═══════════════════════════════════════════
@@ -614,17 +466,19 @@
       lastRowNumber = 0;
       allData = [];
       totalNewRows = 0;
-      userInteractedWithMap = false;
-      fetchNewRows();
+      userInteracted = false;
+      fetchData();
     }
 
     // ═══════════════════════════════════════════
     // INIT
     // ═══════════════════════════════════════════
     function init() {
+      console.log('🚜 Tractor GPS Dashboard Starting...');
+      console.log('📡 API:', API_URL);
       initMap();
-      fetchNewRows();
-      setInterval(fetchNewRows, POLL_INTERVAL);
+      fetchData();
+      setInterval(fetchData, POLL_INTERVAL);
     }
 
     init();
