@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Tractor GPS Tracker • Live via Apps Script</title>
+  <title>Tractor GPS Tracker • Smart Refresh</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
@@ -174,10 +174,10 @@
       color: #cbd5e1;
     }
     tr.new-row {
-      animation: highlight 2s ease-out;
+      animation: highlight 3s ease-out;
     }
     @keyframes highlight {
-      0% { background: #f9731640; }
+      0% { background: #f9731630; }
       100% { background: transparent; }
     }
     
@@ -206,8 +206,13 @@
       border-radius: 2rem;
       font-weight: 600;
       cursor: pointer;
+      font-size: 0.85rem;
     }
     .refresh-btn:hover { background: #2563eb; }
+
+    @media (max-width: 768px) {
+      .stats-row { flex-direction: column; }
+    }
   </style>
 </head>
 <body>
@@ -215,7 +220,7 @@
     <div class="header">
       <div class="title-section">
         <h1>🚜 Tractor GPS Tracker</h1>
-        <div style="color:#94a3b8;font-size:0.85rem;">📍 Live via Apps Script • Auto-detect new rows</div>
+        <div style="color:#94a3b8;font-size:0.85rem;">📍 Smart Refresh • Map updates only on new data</div>
       </div>
       <div style="display:flex;align-items:center;gap:1rem;">
         <div class="live-indicator">
@@ -255,7 +260,7 @@
 
     <div class="status-bar">
       <span id="updateInfo">Initializing...</span>
-      <span>🔍 Polling every 3 seconds</span>
+      <span>🔍 Polling every 3s (map updates on new data only)</span>
       <span id="apiCalls">API calls: 0</span>
     </div>
 
@@ -294,11 +299,11 @@
     // ═══════════════════════════════════════════
     // CONFIGURATION
     // ═══════════════════════════════════════════
-    // REPLACE THIS with your NEW Apps Script Web App URL
+    // REPLACE with your Apps Script Web App URL
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGZy4LF__62tW-BU4iz5zWLGn-DNux1-BWNQZ8_B7mmNml0WZGaiASIs8FNgvDCxND/exec";
     
-    const POLL_INTERVAL = 3000; // Check every 3 seconds
-    const SHEET_ID = "1xHW7s_GL51xGIAhzbnKy9KiILvpOGxwGDyXUAL4R7U8";
+    const POLL_INTERVAL = 3000;
+    const DEFAULT_ZOOM = 16; // Fixed zoom level
 
     // ═══════════════════════════════════════════
     // GLOBAL VARIABLES
@@ -309,19 +314,22 @@
     let allData = [];
     let logsOpen = false;
     let lastRowNumber = 0;
-    let lastTimestamp = null;
     let totalNewRows = 0;
     let apiCallCount = 0;
     let isFirstLoad = true;
+    let currentZoom = DEFAULT_ZOOM;
+    let currentCenter = [12.9725, 77.6524];
+    let userInteractedWithMap = false;
 
     // ═══════════════════════════════════════════
     // INIT MAP
     // ═══════════════════════════════════════════
     function initMap() {
       map = L.map('map', {
-        center: [12.9725, 77.6524],
-        zoom: 16,
-        zoomControl: true
+        center: currentCenter,
+        zoom: DEFAULT_ZOOM,
+        zoomControl: true,
+        scrollWheelZoom: true
       });
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -332,6 +340,17 @@
       markersLayer = L.layerGroup().addTo(map);
       polylineLayer = L.layerGroup().addTo(map);
       L.control.scale({ imperial: false, metric: true, position: 'bottomright' }).addTo(map);
+
+      // Track user interactions with map
+      map.on('zoomend', () => {
+        currentZoom = map.getZoom();
+        userInteractedWithMap = true;
+      });
+      
+      map.on('moveend', () => {
+        currentCenter = [map.getCenter().lat, map.getCenter().lng];
+        userInteractedWithMap = true;
+      });
     }
 
     function toggleLogs() {
@@ -341,7 +360,41 @@
     }
 
     // ═══════════════════════════════════════════
-    // FETCH FROM APPS SCRIPT (Only new rows)
+    // FORMAT TIMESTAMP (Fix ISO format)
+    // ═══════════════════════════════════════════
+    function formatTimestamp(ts) {
+      if (!ts) return '';
+      
+      try {
+        // Handle ISO format: "2026-05-31T10:53:35.000Z"
+        if (ts.includes('T') && ts.includes('Z')) {
+          const date = new Date(ts);
+          if (!isNaN(date.getTime())) {
+            // Convert to IST (UTC+5:30)
+            const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+            const month = (istDate.getMonth() + 1).toString();
+            const day = istDate.getDate().toString();
+            const year = istDate.getFullYear();
+            const hours = istDate.getHours().toString().padStart(2, '0');
+            const minutes = istDate.getMinutes().toString().padStart(2, '0');
+            const seconds = istDate.getSeconds().toString().padStart(2, '0');
+            return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
+          }
+        }
+        
+        // Handle format: "5/31/2026 15:43:29"
+        if (ts.includes('/')) {
+          return ts; // Already in correct format
+        }
+        
+        return ts;
+      } catch (e) {
+        return ts;
+      }
+    }
+
+    // ═══════════════════════════════════════════
+    // FETCH FROM APPS SCRIPT
     // ═══════════════════════════════════════════
     async function fetchNewRows() {
       try {
@@ -350,7 +403,7 @@
         
         let url = APPS_SCRIPT_URL;
         
-        // If we have existing data, only fetch new rows
+        // Only fetch new rows if we have existing data
         if (!isFirstLoad && lastRowNumber > 0) {
           url += `?lastRow=${lastRowNumber}`;
         }
@@ -368,35 +421,43 @@
           return;
         }
         
-        // Process data
+        let newDataAdded = false;
+        
         if (isFirstLoad) {
           // First load - get all data
-          allData = result.data.map(normalizeRow);
-          lastRowNumber = result.totalRows + 1; // +1 because data starts at row 2
+          allData = result.data.map(row => normalizeRow(row));
+          lastRowNumber = result.totalRows + 1;
           isFirstLoad = false;
+          newDataAdded = true; // First load needs to draw map
           console.log('✅ Initial load:', allData.length, 'rows');
         } else if (result.newRows > 0) {
-          // New rows detected!
-          const newRows = result.data.map(normalizeRow);
-          newRows.forEach(row => { row.isNew = true; });
+          // New rows detected - only add new ones
+          const newRows = result.data.map(row => {
+            const normalized = normalizeRow(row);
+            normalized.isNew = true;
+            return normalized;
+          });
           allData = [...allData, ...newRows];
           totalNewRows += newRows.length;
           lastRowNumber = result.totalRows + 1;
+          newDataAdded = true;
           console.log(`🆕 ${newRows.length} new row(s) added!`);
           
           // Flash notification
-          document.getElementById('newRowsCount').style.animation = 'none';
+          const newCountEl = document.getElementById('newRowsCount');
+          newCountEl.style.transform = 'scale(1.3)';
           setTimeout(() => {
-            document.getElementById('newRowsCount').style.animation = '';
-          }, 10);
+            newCountEl.style.transform = 'scale(1)';
+          }, 300);
         }
         
-        if (result.lastTimestamp) {
-          lastTimestamp = result.lastTimestamp;
-        }
-        
+        // Update UI always (stats change even without new rows)
         updateUI();
-        updateMap();
+        
+        // Only update map if new data was added
+        if (newDataAdded) {
+          updateMap(false); // false = don't change zoom/center
+        }
         
         document.getElementById('connectionStatus').textContent = 'Connected';
         document.getElementById('connectionStatus').parentElement.style.background = '#10b98120';
@@ -414,7 +475,7 @@
       
       return {
         rowNumber: row._rowNumber,
-        timestamp: row['Timestamp'] || row['timestamp'] || '',
+        timestamp: formatTimestamp(row['Timestamp'] || row['timestamp'] || ''),
         latitude: lat,
         longitude: lng,
         speed: parseFloat(row['Speed'] || row['speed'] || 0),
@@ -425,12 +486,12 @@
         endTime: row['End Time'] || row['end_time'] || '',
         tripDuration: row['Trip Duration'] || row['trip_duration'] || '',
         distance: row['Distance Travelled'] || row['distance_travelled'] || '',
-        isNew: row.isNew || false
+        isNew: false
       };
     }
 
     // ═══════════════════════════════════════════
-    // UPDATE UI
+    // UPDATE UI (Stats & Table only)
     // ═══════════════════════════════════════════
     function updateUI() {
       const latest = allData.length > 0 ? allData[allData.length - 1] : null;
@@ -446,7 +507,7 @@
       }
       
       document.getElementById('updateInfo').textContent = 
-        `Last update: ${new Date().toLocaleTimeString()} | Total: ${allData.length} rows`;
+        `Last check: ${new Date().toLocaleTimeString()} | Total: ${allData.length} rows | Map updates: on new data only`;
       
       updateTable();
     }
@@ -464,55 +525,85 @@
         return `
           <tr class="${d.isNew ? 'new-row' : ''}">
             <td>${d.rowNumber || ''}${d.isNew ? ' 🆕' : ''}</td>
-            <td>${d.timestamp}</td>
-            <td>${d.latitude.toFixed(5)}</td>
-            <td>${d.longitude.toFixed(5)}</td>
+            <td>${d.timestamp || '--'}</td>
+            <td>${d.latitude ? d.latitude.toFixed(5) : '--'}</td>
+            <td>${d.longitude ? d.longitude.toFixed(5) : '--'}</td>
             <td>${d.speed} km/h</td>
             <td>${d.satellites}</td>
-            <td>${d.motion}</td>
-            <td><span class="${d.status === 'ON' ? 'badge-on' : 'badge-off'}">${d.status}</span></td>
-            <td>${d.startTime}</td>
-            <td>${d.endTime}</td>
-            <td style="color:#f97316;font-weight:600;">${d.tripDuration}</td>
-            <td>${d.distance}</td>
+            <td>${d.motion || '--'}</td>
+            <td><span class="${d.status === 'ON' ? 'badge-on' : 'badge-off'}">${d.status || '--'}</span></td>
+            <td>${d.startTime || '--'}</td>
+            <td>${d.endTime || '--'}</td>
+            <td style="color:#f97316;font-weight:600;">${d.tripDuration || '--'}</td>
+            <td>${d.distance || '--'}</td>
           </tr>
         `;
       }).join('');
     }
 
-    function updateMap() {
+    // ═══════════════════════════════════════════
+    // UPDATE MAP (Only when new data arrives)
+    // ═══════════════════════════════════════════
+    function updateMap(resetView = false) {
       markersLayer.clearLayers();
       polylineLayer.clearLayers();
       
-      const gpsData = allData.filter(d => d.latitude && d.longitude);
+      const gpsData = allData.filter(d => d.latitude && d.longitude && !isNaN(d.latitude) && !isNaN(d.longitude));
+      
+      if (gpsData.length === 0) return;
       
       const onIcon = L.divIcon({
-        html: '<div style="background:#10b981;width:12px;height:12px;border-radius:50%;border:2px solid white;"></div>',
-        iconSize: [12, 12], iconAnchor: [6, 6]
+        html: '<div style="background:#10b981;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 0 8px #10b981;"></div>',
+        iconSize: [14, 14], 
+        iconAnchor: [7, 7]
       });
       
       const offIcon = L.divIcon({
-        html: '<div style="background:#f59e0b;width:12px;height:12px;border-radius:50%;border:2px solid white;"></div>',
-        iconSize: [12, 12], iconAnchor: [6, 6]
+        html: '<div style="background:#f59e0b;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 0 8px #f59e0b;"></div>',
+        iconSize: [14, 14], 
+        iconAnchor: [7, 7]
+      });
+
+      const newIcon = L.divIcon({
+        html: '<div style="background:#f97316;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 0 14px #f97316;animation:pulse 1s infinite;"></div>',
+        iconSize: [18, 18], 
+        iconAnchor: [9, 9]
       });
 
       const latlngs = [];
       
       gpsData.forEach(p => {
-        const icon = p.status === 'ON' ? onIcon : offIcon;
+        const icon = p.isNew ? newIcon : (p.status === 'ON' ? onIcon : offIcon);
         L.marker([p.latitude, p.longitude], { icon })
-          .bindPopup(`<b>${p.timestamp}</b><br>Status: ${p.status}<br>Motion: ${p.motion}`)
+          .bindPopup(`
+            <b>${p.timestamp}</b><br>
+            Status: ${p.status || '--'}<br>
+            Motion: ${p.motion || '--'}<br>
+            Speed: ${p.speed} km/h<br>
+            Trip: ${p.tripDuration || 'N/A'}
+            ${p.isNew ? '<br>🆕 <b>NEW!</b>' : ''}
+          `)
           .addTo(markersLayer);
         latlngs.push([p.latitude, p.longitude]);
       });
 
       if (latlngs.length >= 2) {
-        L.polyline(latlngs, { color: '#3b82f6', weight: 2, opacity: 0.5, dashArray: '6,4' }).addTo(polylineLayer);
+        L.polyline(latlngs, { 
+          color: '#3b82f6', 
+          weight: 2, 
+          opacity: 0.5, 
+          dashArray: '6,4' 
+        }).addTo(polylineLayer);
       }
 
-      if (latlngs.length > 0) {
-        map.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50], maxZoom: 17 });
+      // Only reset view if it's first load or user hasn't interacted with map
+      if (resetView || !userInteractedWithMap) {
+        if (latlngs.length > 0) {
+          map.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50], maxZoom: DEFAULT_ZOOM });
+        }
       }
+      // If user has interacted, keep their current zoom and center
+      // New markers/polyline will still appear at current view
     }
 
     // ═══════════════════════════════════════════
@@ -523,6 +614,7 @@
       lastRowNumber = 0;
       allData = [];
       totalNewRows = 0;
+      userInteractedWithMap = false;
       fetchNewRows();
     }
 
@@ -531,8 +623,8 @@
     // ═══════════════════════════════════════════
     function init() {
       initMap();
-      fetchNewRows(); // Initial load
-      setInterval(fetchNewRows, POLL_INTERVAL); // Poll every 3 seconds
+      fetchNewRows();
+      setInterval(fetchNewRows, POLL_INTERVAL);
     }
 
     init();
