@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Tractor GPS Tracker • Live Dashboard</title>
+  <title>Tractor GPS Tracker • Full Logs Dashboard</title>
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <!-- Leaflet JS -->
@@ -17,21 +17,17 @@
     body {
       font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
       background: #0f172a;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       min-height: 100vh;
       padding: 15px;
     }
     .dashboard {
       width: 100%;
       max-width: 1300px;
+      margin: 0 auto;
       background: #1e293b;
       border-radius: 2rem;
       box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7);
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
       border: 1px solid #334155;
     }
     .header {
@@ -42,7 +38,7 @@
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 1.2rem;
+      gap: 1rem;
     }
     .title-section h1 {
       font-size: 1.9rem;
@@ -85,7 +81,8 @@
       border-radius: 1rem;
       border: 1px solid #334155;
       flex: 1;
-      min-width: 140px;
+      min-width: 130px;
+      text-align: center;
     }
     .stat-label {
       color: #64748b;
@@ -98,25 +95,26 @@
       font-size: 1.5rem;
       font-weight: 700;
     }
-    .stat-value.running {
-      color: #10b981;
+    .run-time-highlight {
+      background: #f9731620;
+      border: 2px solid #f97316;
+      border-radius: 1rem;
+      padding: 1rem 1.5rem;
+      text-align: center;
+    }
+    .run-time-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #f97316;
+    }
+    .running {
+      color: #10b981 !important;
       animation: pulse 2s infinite;
-    }
-    .stat-value.stopped {
-      color: #f59e0b;
-    }
-    .ignition-on {
-      background: #10b98120;
-      border: 1px solid #10b98140;
-    }
-    .ignition-off {
-      background: #f59e0b20;
-      border: 1px solid #f59e0b40;
     }
     .map-container {
       width: 100%;
-      height: 55vh;
-      min-height: 400px;
+      height: 50vh;
+      min-height: 350px;
     }
     #map {
       width: 100%;
@@ -133,17 +131,76 @@
       font-size: 0.9rem;
       border-top: 1px solid #334155;
     }
-    .data-table {
+    .refresh-btn {
+      background: #3b82f6;
+      border: none;
+      color: white;
+      padding: 0.5rem 1.2rem;
+      border-radius: 2rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .refresh-btn:hover {
+      background: #2563eb;
+    }
+
+    /* ── LOGS TAB STYLES ── */
+    .logs-section {
       background: #0f172a;
-      padding: 0.8rem 2rem 1.5rem;
-      overflow-x: auto;
-      max-height: 250px;
+      border-top: 1px solid #334155;
+    }
+    .tab-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.8rem 2rem;
+      background: #1e293b;
+      cursor: pointer;
+      border-bottom: 1px solid #334155;
+      transition: background 0.2s;
+    }
+    .tab-header:hover {
+      background: #273144;
+    }
+    .tab-title {
+      color: #f1f5f9;
+      font-weight: 600;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .tab-badge {
+      background: #3b82f6;
+      color: white;
+      padding: 0.2rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+    }
+    .tab-arrow {
+      color: #94a3b8;
+      font-size: 1.2rem;
+      transition: transform 0.3s;
+    }
+    .tab-arrow.open {
+      transform: rotate(180deg);
+    }
+    .logs-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    .logs-content.open {
+      max-height: 500px;
       overflow-y: auto;
+    }
+    .logs-table-wrapper {
+      padding: 0;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       white-space: nowrap;
     }
     th {
@@ -157,11 +214,15 @@
       position: sticky;
       top: 0;
       background: #0f172a;
+      z-index: 1;
     }
     td {
-      padding: 0.5rem 0.8rem;
+      padding: 0.45rem 0.8rem;
       border-bottom: 1px solid #1e293b;
       color: #cbd5e1;
+    }
+    tr:hover td {
+      background: #1e293b;
     }
     .badge-on {
       background: #10b98130;
@@ -195,43 +256,41 @@
       font-weight: 600;
       font-size: 0.7rem;
     }
-    .run-time-highlight {
-      background: #f9731620;
-      border: 2px solid #f97316;
-      border-radius: 1rem;
-      padding: 1rem 1.5rem;
-      text-align: center;
-    }
-    .run-time-value {
-      font-size: 2rem;
-      font-weight: 800;
-      color: #f97316;
-    }
-    .refresh-btn {
-      background: #3b82f6;
-      border: none;
-      color: white;
-      padding: 0.5rem 1.2rem;
-      border-radius: 2rem;
+    .badge-vibrating {
+      background: #f9731630;
+      color: #fb923c;
+      padding: 0.2rem 0.8rem;
+      border-radius: 20px;
       font-weight: 600;
-      cursor: pointer;
+      font-size: 0.7rem;
     }
-    .refresh-btn:hover {
-      background: #2563eb;
+    .ignition-on {
+      background: #10b98120;
+      border: 1px solid #10b98140;
     }
+    .ignition-off {
+      background: #f59e0b20;
+      border: 1px solid #f59e0b40;
+    }
+
     @media (max-width: 768px) {
       .stats-row {
         flex-direction: column;
+      }
+      .header {
+        flex-direction: column;
+        text-align: center;
       }
     }
   </style>
 </head>
 <body>
   <div class="dashboard">
+    <!-- Header -->
     <div class="header">
       <div class="title-section">
         <h1>🚜 Tractor GPS Tracker <span class="live-badge">🔴 LIVE</span></h1>
-        <div class="subtitle">📍 Auto-fetch from Google Sheets • Run Time Analytics</div>
+        <div class="subtitle">📍 Real-time data from Google Sheets • Run Time Analytics</div>
       </div>
       <button class="refresh-btn" onclick="refreshData()">↻ Refresh Now</button>
     </div>
@@ -239,7 +298,7 @@
     <!-- Stats Cards -->
     <div class="stats-row" id="statsRow">
       <div class="stat-card" id="ignitionCard">
-        <div class="stat-label">🔑 Ignition Status</div>
+        <div class="stat-label">🔑 Ignition</div>
         <div class="stat-value" id="ignitionStatus">--</div>
       </div>
       <div class="stat-card run-time-highlight">
@@ -252,8 +311,12 @@
         <div class="stat-value" id="totalLogs">0</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">⚡ Current Motion</div>
+        <div class="stat-label">⚡ Motion</div>
         <div class="stat-value" id="currentMotion" style="font-size:1.2rem;">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">📍 GPS Points</div>
+        <div class="stat-value" id="gpsCount">0</div>
       </div>
     </div>
 
@@ -262,40 +325,54 @@
       <div id="map"></div>
     </div>
 
-    <!-- Info -->
+    <!-- Info Panel -->
     <div class="info-panel">
       <span id="updateTime">Last update: --</span>
-      <span id="gpsInfo">📍 GPS Points: 0</span>
+      <span id="dataSource">📊 Sheet: Tractor GPS Data</span>
       <span style="color:#3b82f6;">🔄 Auto-refresh: 30s</span>
     </div>
 
-    <!-- Data Table -->
-    <div class="data-table">
-      <table>
-        <thead>
-          <tr>
-            <th>Timestamp (IST)</th>
-            <th>Latitude</th>
-            <th>Longitude</th>
-            <th>Speed</th>
-            <th>Alt</th>
-            <th>Ignition</th>
-            <th>Motion</th>
-            <th>Vibration</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody">
-          <tr><td colspan="8" style="text-align:center;">Loading data...</td></tr>
-        </tbody>
-      </table>
+    <!-- LOGS TAB (Collapsible) -->
+    <div class="logs-section">
+      <div class="tab-header" onclick="toggleLogs()">
+        <div class="tab-title">
+          📋 All Logs
+          <span class="tab-badge" id="logCount">0 records</span>
+        </div>
+        <span class="tab-arrow" id="tabArrow">▼</span>
+      </div>
+      <div class="logs-content" id="logsContent">
+        <div class="logs-table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Timestamp (IST)</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>Speed</th>
+                <th>Alt (m)</th>
+                <th>Sat</th>
+                <th>Ignition</th>
+                <th>Motion</th>
+                <th>Vibration</th>
+                <th>GPS Time</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr><td colspan="11" style="text-align:center; color:#64748b;">Loading data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
     // ═══════════════════════════════════════════
-    // CONFIGURATION
+    // CONFIGURATION - YOUR PUBLISHED CSV URL
     // ═══════════════════════════════════════════
-    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRNmJ2hNkWZgMNsGvWrdjHMnX9pbYqB0aLl5dXbJGzL7qUwFkN3hVjLkTi5RmZsBq0W7aLxCdNq/pub?gid=0&single=true&output=csv";
+    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTJ7QkDGr_mWxLQPPAFJH4l_Vpm_KI4fc4H-wVLem8Zdud2boPDZIq8kmFZIGVIS6UOKUK6O9SMQEVH/pub?output=csv";
     const REFRESH_INTERVAL = 30000; // 30 seconds
 
     // ═══════════════════════════════════════════
@@ -305,6 +382,7 @@
     let markersLayer;
     let polylineLayer;
     let allData = [];
+    let logsOpen = false;
 
     // ═══════════════════════════════════════════
     // INITIALIZE MAP
@@ -329,44 +407,95 @@
     }
 
     // ═══════════════════════════════════════════
-    // PARSE CSV
+    // TOGGLE LOGS TAB
+    // ═══════════════════════════════════════════
+    function toggleLogs() {
+      logsOpen = !logsOpen;
+      const content = document.getElementById('logsContent');
+      const arrow = document.getElementById('tabArrow');
+      
+      if (logsOpen) {
+        content.classList.add('open');
+        arrow.classList.add('open');
+      } else {
+        content.classList.remove('open');
+        arrow.classList.remove('open');
+      }
+    }
+
+    // ═══════════════════════════════════════════
+    // PARSE CSV - HANDLES ALL ROWS
     // ═══════════════════════════════════════════
     function parseCSV(csvText) {
       const lines = csvText.trim().split('\n');
-      if (lines.length < 2) return [];
+      if (lines.length < 2) {
+        console.warn('CSV has less than 2 lines');
+        return [];
+      }
       
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-      const dataRows = lines.slice(1);
+      console.log('Headers found:', headers);
+      console.log('Total rows (including header):', lines.length);
       
-      return dataRows.map(row => {
-        const values = row.split(',').map(v => v.trim());
+      const dataRows = lines.slice(1);
+      console.log('Data rows:', dataRows.length);
+      
+      return dataRows.map((row, index) => {
+        // Handle commas within quotes properly
+        const values = parseCSVLine(row);
         const obj = {};
-        headers.forEach((header, index) => {
-          obj[header] = values[index] || '';
+        headers.forEach((header, i) => {
+          obj[header] = values[i] ? values[i].trim() : '';
         });
         return obj;
       });
+    }
+
+    function parseCSVLine(line) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current);
+      return result;
     }
 
     // ═══════════════════════════════════════════
     // NORMALIZE DATA
     // ═══════════════════════════════════════════
     function normalizeData(rows) {
-      return rows.map(row => {
-        // Find columns (case insensitive)
+      return rows.map((row, index) => {
         const lat = parseFloat(findValue(row, ['latitude', 'lat']));
         const lng = parseFloat(findValue(row, ['longitude', 'lng', 'long']));
-        const timestamp = findValue(row, ['timestamp', 'ist_time', 'time', 'datetime']);
-        const ignition = findValue(row, ['ignition', 'ignition_status']);
+        
+        if (isNaN(lat) || isNaN(lng)) {
+          console.log('Skipping row', index, '- invalid coords:', lat, lng);
+          return null;
+        }
+
+        const timestamp = findValue(row, ['timestamp', 'ist_time', 'datetime', 'time']);
+        const ignition = findValue(row, ['ignition', 'ignition_status', 'ign']);
         const motion = findValue(row, ['motion_status', 'status', 'motion']);
         const speed = parseFloat(findValue(row, ['gps_speed', 'speed', 'speed_kmh'])) || 0;
         const altitude = parseFloat(findValue(row, ['altitude', 'alt'])) || 0;
         const vibration = parseFloat(findValue(row, ['vibration', 'vib'])) || 0;
         const satellites = parseInt(findValue(row, ['satellites', 'sat'])) || 0;
-
-        if (isNaN(lat) || isNaN(lng)) return null;
+        const gpsTime = findValue(row, ['gps_time', 'gps_time_utc']);
 
         return {
+          index: index + 1,
           timestamp,
           latitude: lat,
           longitude: lng,
@@ -376,6 +505,7 @@
           altitude,
           vibration,
           satellites,
+          gpsTime,
           raw: row
         };
       }).filter(p => p !== null);
@@ -384,7 +514,9 @@
     function findValue(obj, keys) {
       for (let key of keys) {
         const matchKey = Object.keys(obj).find(k => k.toLowerCase() === key.toLowerCase());
-        if (matchKey && obj[matchKey]) return obj[matchKey];
+        if (matchKey && obj[matchKey] !== undefined && obj[matchKey] !== '') {
+          return obj[matchKey];
+        }
       }
       return '';
     }
@@ -395,12 +527,11 @@
     function calculateRunTime(data) {
       if (data.length === 0) return { runTime: null, onTime: null, offTime: null, isRunning: false };
 
-      // Sort by timestamp (assuming chronological order in sheet)
-      // Find the LAST ON followed by OFF sequence
+      // Find the latest complete ON→OFF cycle
       let lastOnIndex = -1;
       let lastOffIndex = -1;
 
-      // Find last occurrence of ON
+      // Find last ON
       for (let i = data.length - 1; i >= 0; i--) {
         if (data[i].ignition === 'ON') {
           lastOnIndex = i;
@@ -408,7 +539,7 @@
         }
       }
 
-      // Find last occurrence of OFF AFTER that ON
+      // Find last OFF after that ON
       if (lastOnIndex >= 0) {
         for (let i = data.length - 1; i > lastOnIndex; i--) {
           if (data[i].ignition === 'OFF') {
@@ -418,11 +549,9 @@
         }
       }
 
-      // If no OFF after ON, tractor is still running
       const isRunning = (lastOnIndex >= 0 && lastOffIndex < 0);
       
       if (lastOnIndex >= 0 && lastOffIndex >= 0) {
-        // Calculate time between ON and OFF
         const onTime = parseTimestamp(data[lastOnIndex].timestamp);
         const offTime = parseTimestamp(data[lastOffIndex].timestamp);
         
@@ -432,51 +561,37 @@
             runTime: formatDuration(diffMs),
             onTime: formatTime(onTime),
             offTime: formatTime(offTime),
-            isRunning: false,
-            diffMs
+            isRunning: false
           };
         }
       }
 
-      // If still running, calculate from last ON to now
       if (isRunning && lastOnIndex >= 0) {
         const onTime = parseTimestamp(data[lastOnIndex].timestamp);
         if (onTime) {
-          const now = new Date();
-          const diffMs = now - onTime;
+          const diffMs = new Date() - onTime;
           return {
             runTime: formatDuration(diffMs),
             onTime: formatTime(onTime),
             offTime: null,
-            isRunning: true,
-            diffMs
+            isRunning: true
           };
         }
       }
 
-      // Also check for multiple ON/OFF cycles - find the latest complete cycle
-      return findLatestCycle(data);
-    }
-
-    function findLatestCycle(data) {
-      // Find the latest complete ON→OFF cycle
-      let bestCycle = { runTime: null, onTime: null, offTime: null, isRunning: false };
-      
+      // Search for any complete ON→OFF cycle
       for (let i = data.length - 1; i >= 0; i--) {
         if (data[i].ignition === 'OFF') {
-          // Look backwards for the nearest ON
           for (let j = i - 1; j >= 0; j--) {
             if (data[j].ignition === 'ON') {
               const onTime = parseTimestamp(data[j].timestamp);
               const offTime = parseTimestamp(data[i].timestamp);
               if (onTime && offTime && offTime > onTime) {
-                const diffMs = offTime - onTime;
                 return {
-                  runTime: formatDuration(diffMs),
+                  runTime: formatDuration(offTime - onTime),
                   onTime: formatTime(onTime),
                   offTime: formatTime(offTime),
-                  isRunning: false,
-                  diffMs
+                  isRunning: false
                 };
               }
             }
@@ -484,26 +599,42 @@
         }
       }
       
-      return bestCycle;
+      return { runTime: 'No complete cycle', onTime: null, offTime: null, isRunning: false };
     }
 
     function parseTimestamp(ts) {
       if (!ts) return null;
       try {
-        // Try various formats
-        // Format: "5/24/2026 16:42:54" or "2026-05-24 16:42:54"
         let date;
+        // Format: "5/24/2026 16:42:54" or "5/24/2026 4:42:19 PM"
         if (ts.includes('/')) {
           const parts = ts.split(' ');
           const dateParts = parts[0].split('/');
-          const timeParts = parts[1] ? parts[1].split(':') : [0,0,0];
+          let hours = 0, minutes = 0, seconds = 0;
+          
+          if (parts.length >= 2) {
+            if (parts[parts.length - 1] === 'PM' || parts[parts.length - 1] === 'AM') {
+              // 12-hour format
+              const timeParts = parts[1].split(':');
+              hours = parseInt(timeParts[0]);
+              minutes = parseInt(timeParts[1]);
+              seconds = parseInt(timeParts[2]) || 0;
+              if (parts[parts.length - 1] === 'PM' && hours < 12) hours += 12;
+              if (parts[parts.length - 1] === 'AM' && hours === 12) hours = 0;
+            } else {
+              // 24-hour format
+              const timeParts = parts[1].split(':');
+              hours = parseInt(timeParts[0]);
+              minutes = parseInt(timeParts[1]);
+              seconds = parseInt(timeParts[2]) || 0;
+            }
+          }
+          
           date = new Date(
-            parseInt(dateParts[2]), 
-            parseInt(dateParts[0]) - 1, 
+            parseInt(dateParts[2]),
+            parseInt(dateParts[0]) - 1,
             parseInt(dateParts[1]),
-            parseInt(timeParts[0]),
-            parseInt(timeParts[1]),
-            parseInt(timeParts[2])
+            hours, minutes, seconds
           );
         } else {
           date = new Date(ts);
@@ -515,17 +646,19 @@
     }
 
     function formatTime(date) {
-      return date.toLocaleString('en-IN', { 
-        day: '2-digit', 
-        month: 'short', 
-        hour: '2-digit', 
+      if (!date) return 'N/A';
+      return date.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: true 
+        hour12: true
       });
     }
 
     function formatDuration(ms) {
+      if (ms < 0) return 'Invalid';
       const seconds = Math.floor(ms / 1000);
       const hours = Math.floor(seconds / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
@@ -543,11 +676,14 @@
     // ═══════════════════════════════════════════
     function updateUI(data) {
       allData = data;
+      console.log('Total data points:', data.length);
       
       // Update stats
       document.getElementById('totalLogs').textContent = data.length;
+      document.getElementById('gpsCount').textContent = data.filter(d => d.latitude && d.longitude).length;
+      document.getElementById('logCount').textContent = `${data.length} records`;
       
-      // Get latest data
+      // Latest data
       const latest = data.length > 0 ? data[data.length - 1] : null;
       
       // Ignition status
@@ -555,17 +691,13 @@
       const ignitionCard = document.getElementById('ignitionCard');
       if (latest) {
         ignitionEl.textContent = latest.ignition || '--';
-        if (latest.ignition === 'ON') {
-          ignitionCard.className = 'stat-card ignition-on';
-        } else {
-          ignitionCard.className = 'stat-card ignition-off';
-        }
+        ignitionCard.className = latest.ignition === 'ON' ? 'stat-card ignition-on' : 'stat-card ignition-off';
       }
       
-      // Current motion
+      // Motion
       document.getElementById('currentMotion').textContent = latest ? (latest.motion || '--') : '--';
       
-      // Calculate run time
+      // Run time
       const runTimeInfo = calculateRunTime(data);
       const runTimeEl = document.getElementById('totalRunTime');
       const runTimeDetail = document.getElementById('runTimeDetail');
@@ -574,9 +706,9 @@
         runTimeEl.textContent = runTimeInfo.runTime;
         if (runTimeInfo.isRunning) {
           runTimeEl.className = 'run-time-value running';
-          runTimeDetail.innerHTML = `🟢 Engine RUNNING since ${runTimeInfo.onTime}`;
+          runTimeDetail.innerHTML = `🟢 Running since ${runTimeInfo.onTime}`;
         } else {
-          runTimeEl.className = 'run-time-value stopped';
+          runTimeEl.className = 'run-time-value';
           runTimeDetail.innerHTML = `🔴 ON: ${runTimeInfo.onTime}<br>🔵 OFF: ${runTimeInfo.offTime}`;
         }
       } else {
@@ -585,9 +717,8 @@
         runTimeDetail.textContent = '';
       }
       
-      // Update update time
+      // Update time
       document.getElementById('updateTime').textContent = `Last update: ${new Date().toLocaleTimeString()}`;
-      document.getElementById('gpsInfo').textContent = `📍 GPS Points: ${data.length}`;
       
       // Update table
       updateTable(data);
@@ -596,35 +727,41 @@
     function updateTable(data) {
       const tbody = document.getElementById('tableBody');
       if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">No data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#f87171;">No data available</td></tr>';
         return;
       }
       
-      // Show last 50 entries in reverse order
-      const displayData = data.slice(-50).reverse();
+      // Show ALL data in reverse chronological order
+      const displayData = [...data].reverse();
       
       tbody.innerHTML = displayData.map(d => {
-        const ignitionBadge = d.ignition === 'ON' 
-          ? '<span class="badge-on">ON</span>' 
-          : '<span class="badge-off">OFF</span>';
+        let ignitionBadge = '--';
+        if (d.ignition === 'ON') ignitionBadge = '<span class="badge-on">ON</span>';
+        else if (d.ignition === 'OFF') ignitionBadge = '<span class="badge-off">OFF</span>';
         
-        const motionBadge = d.motion === 'MOVING' 
-          ? '<span class="badge-moving">MOVING</span>' 
-          : '<span class="badge-stable">STABLE</span>';
+        let motionBadge = '--';
+        if (d.motion === 'MOVING') motionBadge = '<span class="badge-moving">MOVING</span>';
+        else if (d.motion === 'STABLE') motionBadge = '<span class="badge-stable">STABLE</span>';
+        else if (d.motion === 'VIBRATING') motionBadge = '<span class="badge-vibrating">VIBRATING</span>';
         
         return `
           <tr>
+            <td style="color:#64748b;">${d.index}</td>
             <td>${d.timestamp || 'N/A'}</td>
             <td>${d.latitude.toFixed(5)}</td>
             <td>${d.longitude.toFixed(5)}</td>
             <td>${d.speed.toFixed(1)} km/h</td>
-            <td>${d.altitude.toFixed(1)} m</td>
+            <td>${d.altitude.toFixed(1)}</td>
+            <td>${d.satellites}</td>
             <td>${ignitionBadge}</td>
             <td>${motionBadge}</td>
             <td>${d.vibration.toFixed(3)}</td>
+            <td>${d.gpsTime || '--'}</td>
           </tr>
         `;
       }).join('');
+      
+      console.log('Table updated with', displayData.length, 'rows');
     }
 
     // ═══════════════════════════════════════════
@@ -636,30 +773,33 @@
       
       if (data.length === 0) return;
       
-      // Color markers by ignition status
+      const gpsData = data.filter(d => d.latitude && d.longitude);
+      
+      // On/Off icons
       const onIcon = L.divIcon({
-        html: '<div style="background:#10b981;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 0 12px #10b981;"></div>',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
+        html: '<div style="background:#10b981;width:20px;height:20px;border-radius:50%;border:2px solid white;box-shadow:0 0 10px #10b981;"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
       });
       
       const offIcon = L.divIcon({
-        html: '<div style="background:#f59e0b;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 0 12px #f59e0b;"></div>',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
+        html: '<div style="background:#f59e0b;width:20px;height:20px;border-radius:50%;border:2px solid white;box-shadow:0 0 10px #f59e0b;"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
       });
 
       const latlngs = [];
       
-      data.forEach((p, i) => {
+      gpsData.forEach((p) => {
         const icon = p.ignition === 'ON' ? onIcon : offIcon;
         const marker = L.marker([p.latitude, p.longitude], { icon })
           .bindPopup(`
-            <b>${p.timestamp || 'N/A'}</b><br>
+            <b>#${p.index}</b> ${p.timestamp || 'N/A'}<br>
             🔑 Ignition: ${p.ignition}<br>
             ⚡ Motion: ${p.motion}<br>
             🚜 Speed: ${p.speed.toFixed(1)} km/h<br>
-            📳 Vibration: ${p.vibration.toFixed(3)}
+            📳 Vibration: ${p.vibration.toFixed(3)}<br>
+            🛰️ Satellites: ${p.satellites}
           `);
         markersLayer.addLayer(marker);
         latlngs.push([p.latitude, p.longitude]);
@@ -669,13 +809,13 @@
         L.polyline(latlngs, {
           color: '#3b82f6',
           weight: 2,
-          opacity: 0.6,
-          dashArray: '8, 6'
+          opacity: 0.5,
+          dashArray: '6, 4'
         }).addTo(polylineLayer);
       }
 
       if (latlngs.length > 0) {
-        map.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50], maxZoom: 17 });
+        map.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50], maxZoom: 16 });
       }
     }
 
@@ -684,45 +824,48 @@
     // ═══════════════════════════════════════════
     async function fetchData() {
       try {
-        const response = await fetch(SHEET_CSV_URL, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        console.log('Fetching from:', SHEET_CSV_URL);
+        const response = await fetch(SHEET_CSV_URL, { 
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
         
         const csvText = await response.text();
+        console.log('CSV length:', csvText.length, 'characters');
+        console.log('First 200 chars:', csvText.substring(0, 200));
+        
         const rows = parseCSV(csvText);
+        console.log('Parsed rows:', rows.length);
+        
         const data = normalizeData(rows);
+        console.log('Normalized data points:', data.length);
         
         return data;
       } catch (error) {
         console.error('Fetch error:', error);
-        return getFallbackData();
+        return [];
       }
     }
 
-    function getFallbackData() {
-      // Sample data with ignition ON/OFF for testing
-      return [
-        { timestamp: "5/24/2026 16:42:54", latitude: 12.97231, longitude: 77.65237, ignition: "OFF", motion: "STABLE", speed: 0, altitude: 884.5, vibration: 0.032, satellites: 5 },
-        { timestamp: "5/24/2026 16:45:26", latitude: 12.97236, longitude: 77.65234, ignition: "ON", motion: "STABLE", speed: 0, altitude: 902.7, vibration: 0.032, satellites: 5 },
-        { timestamp: "5/24/2026 16:47:58", latitude: 12.97232, longitude: 77.65233, ignition: "ON", motion: "MOVING", speed: 5.2, altitude: 905, vibration: 0.15, satellites: 5 },
-        { timestamp: "5/24/2026 16:50:30", latitude: 12.97250, longitude: 77.65250, ignition: "ON", motion: "MOVING", speed: 8.7, altitude: 903, vibration: 0.22, satellites: 6 },
-        { timestamp: "5/24/2026 16:53:15", latitude: 12.97270, longitude: 77.65270, ignition: "OFF", motion: "STABLE", speed: 0, altitude: 901, vibration: 0.04, satellites: 5 }
-      ];
-    }
-
     async function refreshData() {
+      console.log('🔄 Refreshing data...');
       const data = await fetchData();
       updateUI(data);
       updateMap(data);
+      console.log('✅ Refresh complete');
     }
 
     // ═══════════════════════════════════════════
     // INITIALIZE
     // ═══════════════════════════════════════════
     function init() {
+      console.log('🚜 Tractor GPS Dashboard Initializing...');
       initMap();
       refreshData();
-      
-      // Auto refresh
       setInterval(refreshData, REFRESH_INTERVAL);
     }
 
