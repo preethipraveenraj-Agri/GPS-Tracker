@@ -222,6 +222,11 @@
         maxZoom: 20
       }).addTo(map);
 
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+      
       markersLayer = L.layerGroup().addTo(map);
       polylineLayer = L.layerGroup().addTo(map);
       L.control.scale({ imperial: false, metric: true, position: 'bottomright' }).addTo(map);
