@@ -430,11 +430,23 @@
         iconSize: [18, 18], iconAnchor: [9, 9]
       });
 
+      const tractorIcon = L.divIcon({
+        html: '<div style="font-size:38px;filter:drop-shadow(0 0 6px rgba(0,0,0,0.8));">🚜</div>',
+        className: 'tractor-icon',
+        iconSize: [45, 45],
+        iconAnchor: [22, 22]
+      });
+      
       const latlngs = [];
       
-      gpsData.forEach(p => {
+      gpsData.forEach((p, index) => {
         const isOn = (p.status || '').toUpperCase() === 'ON';
-        const icon = p.isNew ? newIcon : (isOn ? onIcon : offIcon);
+        
+        const isLatest = index === gpsData.length - 1;
+
+        const icon = isLatest
+          ? tractorIcon
+          : (p.isNew ? newIcon : (isOn ? onIcon : offIcon));
         
         L.marker([p.latitude, p.longitude], { icon })
           .bindPopup(`
