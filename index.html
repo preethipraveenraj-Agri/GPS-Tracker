@@ -189,7 +189,7 @@
     // ═══════════════════════════════════════════
     // 🔴 REPLACE WITH YOUR APPS SCRIPT WEB APP URL
     // ═══════════════════════════════════════════
-    const API_URL = "https://script.google.com/macros/s/AKfycbwv-2_5GF034RRNX_f_lmT5GeWpBydPTsmtmG1M-SEhCUy5X8h05GcIx-hPvAgOVvh7/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbxiVEIM3RyPSeL4AS9A1ixT5feFgkiMkAY0I6CKtv1PuYwvSSiMigkAFcGu2YnvRXxSYg/exec";
     
     const POLL_INTERVAL = 3000; // 3 seconds
     const DEFAULT_ZOOM = 16;
@@ -222,11 +222,6 @@
         maxZoom: 20
       }).addTo(map);
 
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
-      
       markersLayer = L.layerGroup().addTo(map);
       polylineLayer = L.layerGroup().addTo(map);
       L.control.scale({ imperial: false, metric: true, position: 'bottomright' }).addTo(map);
@@ -429,12 +424,11 @@
         html: '<div style="background:#f97316;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 0 14px #f97316;animation:pulse 1s infinite;"></div>',
         iconSize: [18, 18], iconAnchor: [9, 9]
       });
-      
+
       const latlngs = [];
       
       gpsData.forEach(p => {
         const isOn = (p.status || '').toUpperCase() === 'ON';
-        
         const icon = p.isNew ? newIcon : (isOn ? onIcon : offIcon);
         
         L.marker([p.latitude, p.longitude], { icon })
